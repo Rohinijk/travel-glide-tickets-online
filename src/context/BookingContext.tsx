@@ -1,4 +1,6 @@
+
 import React, { createContext, useContext, useState, ReactNode } from "react";
+import { toast } from "@/hooks/use-toast";
 
 type Seat = {
   id: string;
@@ -40,6 +42,12 @@ type BookingState = {
   bookingId: string | null;
 };
 
+type Booking = BookingState & {
+  id: string;
+  status: "Confirmed" | "Cancelled" | "Pending";
+  bookingDate: Date;
+};
+
 type BookingContextType = {
   booking: BookingState;
   step: number;
@@ -50,6 +58,8 @@ type BookingContextType = {
   setPassengerInfo: (passenger: Passenger) => void;
   completeBooking: () => void;
   resetBooking: () => void;
+  savedBookings: Booking[];
+  cancelBooking: (bookingId: string) => void;
 };
 
 const initialState: BookingState = {
@@ -82,6 +92,20 @@ export const useBooking = () => {
 export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [booking, setBooking] = useState<BookingState>(initialState);
   const [step, setStep] = useState(1);
+  const [savedBookings, setSavedBookings] = useState<Booking[]>([]);
+
+  // Get saved bookings from localStorage on initial load
+  React.useEffect(() => {
+    const storedBookings = localStorage.getItem('travelGlideBookings');
+    if (storedBookings) {
+      try {
+        const parsedBookings = JSON.parse(storedBookings);
+        setSavedBookings(parsedBookings);
+      } catch (error) {
+        console.error("Error parsing saved bookings:", error);
+      }
+    }
+  }, []);
 
   const setSearchParams = (from: string, to: string, date: Date) => {
     setBooking(prev => ({
@@ -139,10 +163,47 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children })
   };
 
   const completeBooking = () => {
+    const newBookingId = generateBookingId();
+    
     setBooking(prev => ({
       ...prev,
-      bookingId: generateBookingId()
+      bookingId: newBookingId
     }));
+    
+    // Save the completed booking to our list of bookings
+    const newBooking: Booking = {
+      ...booking,
+      id: newBookingId,
+      bookingId: newBookingId,
+      status: "Confirmed",
+      bookingDate: new Date()
+    };
+    
+    const updatedBookings = [...savedBookings, newBooking];
+    setSavedBookings(updatedBookings);
+    
+    // Save to localStorage for persistence
+    localStorage.setItem('travelGlideBookings', JSON.stringify(updatedBookings));
+  };
+  
+  const cancelBooking = (bookingId: string) => {
+    const bookingIndex = savedBookings.findIndex(b => b.id === bookingId);
+    
+    if (bookingIndex !== -1) {
+      const updatedBookings = [...savedBookings];
+      updatedBookings[bookingIndex] = {
+        ...updatedBookings[bookingIndex],
+        status: "Cancelled"
+      };
+      
+      setSavedBookings(updatedBookings);
+      localStorage.setItem('travelGlideBookings', JSON.stringify(updatedBookings));
+      
+      toast({
+        title: "Booking Cancelled",
+        description: `Your booking ${bookingId} has been cancelled. A refund of $${savedBookings[bookingIndex].totalPrice.toFixed(2)} will be processed within 5-7 business days.`
+      });
+    }
   };
 
   const resetBooking = () => {
@@ -159,7 +220,9 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children })
     toggleSeatSelection,
     setPassengerInfo,
     completeBooking,
-    resetBooking
+    resetBooking,
+    savedBookings,
+    cancelBooking
   };
 
   return (
