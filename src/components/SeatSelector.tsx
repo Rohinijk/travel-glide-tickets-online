@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useBooking } from "@/context/BookingContext";
 import { Seat } from "@/data/busData";
-import { SteeringWheel } from "lucide-react";
+import { Bus as BusIcon } from "lucide-react";
 
 const SeatSelector = () => {
   const { booking, toggleSeatSelection, setStep } = useBooking();
@@ -61,7 +61,7 @@ const SeatSelector = () => {
           <div className="bus-layout">
             <div className="flex justify-end mb-6">
               <div className="bg-gray-300 rounded-md px-4 py-2 flex items-center">
-                <SteeringWheel className="h-6 w-6 text-gray-600" />
+                <BusIcon className="h-6 w-6 text-gray-600" />
                 <span className="ml-2 text-sm font-medium">Driver</span>
               </div>
             </div>
