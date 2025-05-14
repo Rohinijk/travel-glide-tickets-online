@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
 type Seat = {
@@ -17,6 +16,8 @@ type Bus = {
   price: number;
   seatsAvailable: number;
   rating: number;
+  busType: string;
+  amenities: string[];
   seats: Seat[];
 };
 
