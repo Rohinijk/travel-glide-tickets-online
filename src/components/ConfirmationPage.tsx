@@ -1,9 +1,8 @@
-
 import React, { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useBooking } from "@/context/BookingContext";
-import { CheckCircle, Download, Bus, MapPin, Calendar, User, Phone, Mail, CreditCard, Cash } from "lucide-react";
+import { CheckCircle, Download, Bus, MapPin, Calendar, User, Phone, Mail, CreditCard, Wallet } from "lucide-react";
 import { format } from "date-fns";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "@/hooks/use-toast";
@@ -71,7 +70,7 @@ const ConfirmationPage = () => {
                 <div className="flex items-center space-x-3 p-3 rounded-md border-2 border-gray-200 hover:bg-green-50 hover:border-green-300 cursor-pointer">
                   <RadioGroupItem value="cash" id="cash" />
                   <Label htmlFor="cash" className="flex items-center cursor-pointer flex-1">
-                    <Cash className="mr-3 h-5 w-5 text-green-600" />
+                    <Wallet className="mr-3 h-5 w-5 text-green-600" />
                     <div>
                       <p className="font-medium">Cash Payment</p>
                       <p className="text-sm text-gray-500">Pay cash when boarding the bus</p>

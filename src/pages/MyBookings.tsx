@@ -1,4 +1,3 @@
-
 import React from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,7 +17,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { CalendarDays, Clock, MapPin, User, Download, Ticket, MessageSquare, CreditCard, Cash } from "lucide-react";
+import { CalendarDays, Clock, MapPin, User, Download, Ticket, MessageSquare, CreditCard, Wallet } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 const BookingsList = () => {
