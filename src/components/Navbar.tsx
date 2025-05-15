@@ -1,5 +1,5 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useBooking } from "@/context/BookingContext";
 import { useAuth } from "@/context/AuthContext";
@@ -7,13 +7,15 @@ import { Bus, LogIn, UserPlus, User, MessageCircle } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 
 const Navbar = () => {
   const { resetBooking } = useBooking();
   const { user, isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
+  const [feedbackText, setFeedbackText] = useState("");
+  const [isFeedbackDialogOpen, setIsFeedbackDialogOpen] = useState(false);
 
   const handleLogoClick = () => {
     resetBooking();
@@ -22,12 +24,21 @@ const Navbar = () => {
 
   const handleFeedbackSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    toast({
-      title: "Feedback Received",
-      description: "Thank you for your feedback! We'll review it shortly.",
-    });
-    // Close the dialog by simulating an escape key press
-    document.dispatchEvent(new KeyboardEvent('keydown', {'key': 'Escape'}));
+    
+    if (feedbackText.trim()) {
+      toast({
+        title: "Feedback Received",
+        description: "Thank you for your feedback! We'll review it shortly.",
+      });
+      setFeedbackText("");
+      setIsFeedbackDialogOpen(false);
+    } else {
+      toast({
+        title: "Feedback Required",
+        description: "Please enter your feedback before submitting.",
+        variant: "destructive"
+      });
+    }
   };
 
   return (
@@ -50,7 +61,7 @@ const Navbar = () => {
           <Link to="/offers" className="text-gray-600 hover:text-brand-blue">
             Offers
           </Link>
-          <Dialog>
+          <Dialog open={isFeedbackDialogOpen} onOpenChange={setIsFeedbackDialogOpen}>
             <DialogTrigger asChild>
               <button className="text-gray-600 hover:text-brand-blue">
                 Feedback
@@ -67,7 +78,14 @@ const Navbar = () => {
                 <div className="grid gap-4 py-4">
                   <div className="grid gap-2">
                     <Label htmlFor="feedback">Your Feedback</Label>
-                    <Textarea id="feedback" placeholder="Tell us what you think..." required className="min-h-[120px]" />
+                    <Textarea 
+                      id="feedback" 
+                      placeholder="Tell us what you think..." 
+                      required 
+                      className="min-h-[120px]"
+                      value={feedbackText}
+                      onChange={(e) => setFeedbackText(e.target.value)} 
+                    />
                   </div>
                 </div>
                 <DialogFooter>
