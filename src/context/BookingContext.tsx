@@ -31,6 +31,8 @@ type Passenger = {
   phone: string;
 };
 
+type PaymentMethod = "online" | "cash";
+
 type BookingState = {
   from: string;
   to: string;
@@ -40,12 +42,22 @@ type BookingState = {
   passenger: Passenger;
   totalPrice: number;
   bookingId: string | null;
+  paymentMethod: PaymentMethod;
 };
 
 type Booking = BookingState & {
   id: string;
   status: "Confirmed" | "Cancelled" | "Pending";
   bookingDate: Date;
+};
+
+type Offer = {
+  id: string;
+  title: string;
+  code: string;
+  discount: number;
+  validUntil: Date;
+  description: string;
 };
 
 type BookingContextType = {
@@ -60,6 +72,9 @@ type BookingContextType = {
   resetBooking: () => void;
   savedBookings: Booking[];
   cancelBooking: (bookingId: string) => void;
+  currentOffers: Offer[];
+  setPaymentMethod: (method: PaymentMethod) => void;
+  downloadTicket: (bookingId: string) => void;
 };
 
 const initialState: BookingState = {
@@ -76,8 +91,37 @@ const initialState: BookingState = {
     phone: ""
   },
   totalPrice: 0,
-  bookingId: null
+  bookingId: null,
+  paymentMethod: "online"
 };
+
+// Sample offers data
+const offers: Offer[] = [
+  {
+    id: "offer1",
+    title: "First Trip Discount",
+    code: "FIRST10",
+    discount: 10,
+    validUntil: new Date(2025, 11, 31),
+    description: "Get 10% off on your first booking with TravelGlide"
+  },
+  {
+    id: "offer2",
+    title: "Weekend Special",
+    code: "WEEKEND20",
+    discount: 20,
+    validUntil: new Date(2025, 5, 30),
+    description: "Enjoy 20% off on weekend travels"
+  },
+  {
+    id: "offer3",
+    title: "Summer Vacation Offer",
+    code: "SUMMER15",
+    discount: 15, 
+    validUntil: new Date(2025, 8, 30),
+    description: "15% discount on all summer bookings"
+  }
+];
 
 const BookingContext = createContext<BookingContextType | undefined>(undefined);
 
@@ -210,6 +254,54 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children })
     setBooking(initialState);
     setStep(1);
   };
+  
+  const setPaymentMethod = (method: PaymentMethod) => {
+    setBooking(prev => ({
+      ...prev,
+      paymentMethod: method
+    }));
+  };
+  
+  const downloadTicket = (bookingId: string) => {
+    const booking = savedBookings.find(b => b.id === bookingId);
+    if (!booking) return;
+    
+    // Generate a simple text-based ticket
+    const ticketContent = `
+      ===== TRAVELGLIDE E-TICKET =====
+      
+      BOOKING ID: ${booking.bookingId}
+      
+      FROM: ${booking.from}
+      TO: ${booking.to}
+      DATE: ${booking.date ? new Date(booking.date).toLocaleDateString() : 'N/A'}
+      TIME: ${booking.selectedBus?.departureTime || 'N/A'} - ${booking.selectedBus?.arrivalTime || 'N/A'}
+      
+      PASSENGER: ${booking.passenger.name}
+      SEAT(S): ${booking.selectedSeats.map(s => s.number).join(', ')}
+      
+      TOTAL PAID: ₹${booking.totalPrice.toFixed(2)}
+      PAYMENT METHOD: ${booking.paymentMethod}
+      
+      ==== Thank you for choosing TravelGlide ====
+    `;
+    
+    // Create a Blob and download it
+    const blob = new Blob([ticketContent], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `TravelGlide-Ticket-${bookingId}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    toast({
+      title: "Ticket Downloaded",
+      description: "Your e-ticket has been downloaded successfully."
+    });
+  };
 
   const value: BookingContextType = {
     booking,
@@ -222,7 +314,10 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children })
     completeBooking,
     resetBooking,
     savedBookings,
-    cancelBooking
+    cancelBooking,
+    currentOffers: offers,
+    setPaymentMethod,
+    downloadTicket
   };
 
   return (

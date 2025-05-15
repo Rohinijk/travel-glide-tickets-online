@@ -1,27 +1,35 @@
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useBooking } from "@/context/BookingContext";
-import { CheckCircle, Download, Bus, MapPin, Calendar, User, Phone, Mail } from "lucide-react";
+import { CheckCircle, Download, Bus, MapPin, Calendar, User, Phone, Mail, CreditCard, Cash } from "lucide-react";
 import { format } from "date-fns";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { toast } from "@/hooks/use-toast";
+import { Label } from "@/components/ui/label";
 
 const ConfirmationPage = () => {
-  const { booking, completeBooking, resetBooking } = useBooking();
+  const { booking, completeBooking, resetBooking, setPaymentMethod, downloadTicket } = useBooking();
+  const [isPaymentComplete, setIsPaymentComplete] = useState(false);
   
   useEffect(() => {
-    if (!booking.bookingId) {
+    if (isPaymentComplete && !booking.bookingId) {
       completeBooking();
     }
-  }, [booking.bookingId, completeBooking]);
+  }, [isPaymentComplete, booking.bookingId, completeBooking]);
 
   if (!booking.selectedBus || !booking.date) {
     return null;
   }
 
-  const handleDownloadTicket = () => {
-    // In a real app, this would generate a PDF ticket
-    alert("This would download your ticket in a real application!");
+  const handlePaymentSubmit = () => {
+    // In a real app, this would process payment through a payment gateway
+    toast({
+      title: "Payment Successful",
+      description: `Payment of ₹${(booking.totalPrice + 50).toFixed(2)} completed via ${booking.paymentMethod === "online" ? "online payment" : "cash payment"}.`
+    });
+    setIsPaymentComplete(true);
   };
 
   const handleBookNew = () => {
@@ -32,6 +40,80 @@ const ConfirmationPage = () => {
     return format(date, "EEE, MMM dd, yyyy");
   };
   
+  // Payment selection screen if payment isn't complete
+  if (!isPaymentComplete) {
+    return (
+      <div className="mt-8 step-container" style={{ animationDelay: '0.2s' }}>
+        <div className="max-w-2xl mx-auto">
+          <div className="text-center mb-8">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-800">Select Payment Method</h1>
+            <p className="text-gray-600 mt-2">Choose how you would like to pay for your booking</p>
+          </div>
+          
+          <Card className="mb-8">
+            <CardContent className="p-6">
+              <RadioGroup
+                defaultValue={booking.paymentMethod}
+                onValueChange={(value) => setPaymentMethod(value as "online" | "cash")}
+                className="space-y-4 mt-2"
+              >
+                <div className="flex items-center space-x-3 p-3 rounded-md border-2 border-gray-200 hover:bg-blue-50 hover:border-blue-300 cursor-pointer">
+                  <RadioGroupItem value="online" id="online" />
+                  <Label htmlFor="online" className="flex items-center cursor-pointer flex-1">
+                    <CreditCard className="mr-3 h-5 w-5 text-blue-600" />
+                    <div>
+                      <p className="font-medium">Online Payment</p>
+                      <p className="text-sm text-gray-500">Credit/Debit Card, UPI, Net Banking</p>
+                    </div>
+                  </Label>
+                </div>
+                
+                <div className="flex items-center space-x-3 p-3 rounded-md border-2 border-gray-200 hover:bg-green-50 hover:border-green-300 cursor-pointer">
+                  <RadioGroupItem value="cash" id="cash" />
+                  <Label htmlFor="cash" className="flex items-center cursor-pointer flex-1">
+                    <Cash className="mr-3 h-5 w-5 text-green-600" />
+                    <div>
+                      <p className="font-medium">Cash Payment</p>
+                      <p className="text-sm text-gray-500">Pay cash when boarding the bus</p>
+                    </div>
+                  </Label>
+                </div>
+              </RadioGroup>
+              
+              <div className="mt-6 pt-6 border-t">
+                <h3 className="font-semibold text-gray-600 mb-3">Payment Summary</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Base Fare</span>
+                    <span>₹{booking.totalPrice}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Service Fee</span>
+                    <span>₹50</span>
+                  </div>
+                  <div className="flex justify-between font-semibold pt-2 border-t">
+                    <span>Total Amount</span>
+                    <span className="text-brand-blue">₹{booking.totalPrice + 50}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="mt-6">
+                <Button 
+                  className="w-full bg-brand-teal hover:bg-brand-blue transition-colors"
+                  onClick={handlePaymentSubmit}
+                >
+                  {booking.paymentMethod === "online" ? "Pay Now" : "Confirm Cash Payment"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+  
+  // Confirmation screen after payment is complete
   return (
     <div className="mt-8 step-container" style={{ animationDelay: '0.2s' }}>
       <div className="max-w-2xl mx-auto">
@@ -50,7 +132,11 @@ const ConfirmationPage = () => {
                 <h2 className="font-semibold">Booking ID</h2>
                 <p className="text-lg">{booking.bookingId}</p>
               </div>
-              <Button variant="outline" className="text-white border-white hover:bg-white hover:text-brand-blue" onClick={handleDownloadTicket}>
+              <Button 
+                variant="outline" 
+                className="text-white border-white hover:bg-white hover:text-brand-blue"
+                onClick={() => booking.bookingId && downloadTicket(booking.bookingId)}
+              >
                 <Download className="mr-2 h-4 w-4" />
                 Download Ticket
               </Button>
@@ -159,6 +245,10 @@ const ConfirmationPage = () => {
                 <div className="flex justify-between">
                   <span className="text-gray-600">Service Fee</span>
                   <span>₹50</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Payment Method</span>
+                  <span>{booking.paymentMethod === "online" ? "Online Payment" : "Cash Payment"}</span>
                 </div>
                 <div className="flex justify-between font-semibold pt-2 border-t">
                   <span>Total Amount Paid</span>
