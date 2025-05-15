@@ -1,4 +1,5 @@
-import React from "react";
+
+import React, { useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Navbar from "@/components/Navbar";
@@ -17,6 +18,18 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogTrigger,
+  DialogClose
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { CalendarDays, Clock, MapPin, User, Download, Ticket, MessageSquare, CreditCard, Wallet } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
@@ -24,6 +37,8 @@ const BookingsList = () => {
   const { user, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const { savedBookings, cancelBooking, downloadTicket, currentOffers } = useBooking();
+  const [feedbackText, setFeedbackText] = useState("");
+  const [selectedOffer, setSelectedOffer] = useState(null);
   
   if (!isAuthenticated) {
     React.useEffect(() => {
@@ -47,6 +62,22 @@ const BookingsList = () => {
     return format(date, "EEE, MMM dd, yyyy");
   };
 
+  const handleFeedbackSubmit = () => {
+    if (feedbackText.trim()) {
+      toast({
+        title: "Feedback Submitted",
+        description: "Thank you for your feedback! We'll review it soon."
+      });
+      setFeedbackText("");
+    } else {
+      toast({
+        title: "Feedback Required",
+        description: "Please enter your feedback before submitting.",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <div>
       {/* Current Offers Section */}
@@ -54,23 +85,59 @@ const BookingsList = () => {
         <h2 className="text-xl font-bold mb-3">Current Offers</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {currentOffers.map(offer => (
-            <Card key={offer.id} className="bg-gradient-to-r from-blue-50 to-teal-50 border-2 border-brand-blue/20">
-              <CardHeader className="pb-2">
-                <div className="flex justify-between">
-                  <CardTitle className="text-lg text-brand-blue">{offer.title}</CardTitle>
-                  <div className="bg-brand-teal text-white px-2 py-1 rounded-full text-xs font-bold">
-                    {offer.discount}% OFF
+            <Dialog key={offer.id}>
+              <DialogTrigger asChild>
+                <Card className="bg-gradient-to-r from-blue-50 to-teal-50 border-2 border-brand-blue/20 cursor-pointer hover:shadow-md transition-all">
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between">
+                      <CardTitle className="text-lg text-brand-blue">{offer.title}</CardTitle>
+                      <div className="bg-brand-teal text-white px-2 py-1 rounded-full text-xs font-bold">
+                        {offer.discount}% OFF
+                      </div>
+                    </div>
+                    <CardDescription>Use code: <span className="font-mono font-bold">{offer.code}</span></CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-gray-600">{offer.description}</p>
+                    <p className="text-xs mt-2 text-gray-500">
+                      Valid until: {format(new Date(offer.validUntil), "MMM dd, yyyy")}
+                    </p>
+                  </CardContent>
+                </Card>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle className="flex justify-between items-center">
+                    <span>{offer.title}</span>
+                    <span className="bg-brand-teal text-white px-2 py-1 rounded-full text-xs font-bold">{offer.discount}% OFF</span>
+                  </DialogTitle>
+                  <DialogDescription>
+                    Use code: <span className="font-mono font-bold">{offer.code}</span>
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                  <h4 className="font-medium mb-2">Offer Details</h4>
+                  <p className="text-gray-700">{offer.description}</p>
+                  
+                  <div className="mt-4 p-3 bg-gray-50 rounded-md">
+                    <div className="flex items-center gap-2 text-sm">
+                      <CalendarDays className="h-4 w-4 text-gray-500" />
+                      <span className="text-gray-600">Valid until: {format(new Date(offer.validUntil), "MMMM dd, yyyy")}</span>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 mt-2 text-sm">
+                      <Ticket className="h-4 w-4 text-gray-500" />
+                      <span className="text-gray-600">Applicable on all bookings</span>
+                    </div>
                   </div>
                 </div>
-                <CardDescription>Use code: <span className="font-mono font-bold">{offer.code}</span></CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-gray-600">{offer.description}</p>
-                <p className="text-xs mt-2 text-gray-500">
-                  Valid until: {format(new Date(offer.validUntil), "MMM dd, yyyy")}
-                </p>
-              </CardContent>
-            </Card>
+                <DialogFooter>
+                  <Button onClick={() => navigate("/")} className="w-full">
+                    Book Now with Offer
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           ))}
         </div>
       </div>
@@ -150,19 +217,41 @@ const BookingsList = () => {
                     <Download className="h-4 w-4" /> Download Ticket
                   </Button>
                   
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="h-8 flex gap-1"
-                    onClick={() => {
-                      toast({
-                        title: "Feedback",
-                        description: "Thanks for your interest! Our feedback system will be available soon."
-                      });
-                    }}
-                  >
-                    <MessageSquare className="h-4 w-4" /> Feedback
-                  </Button>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="h-8 flex gap-1"
+                      >
+                        <MessageSquare className="h-4 w-4" /> Feedback
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Share Your Feedback</DialogTitle>
+                        <DialogDescription>
+                          Let us know about your experience with this booking.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="py-4">
+                        <Label htmlFor="feedback" className="text-sm">Your Feedback</Label>
+                        <Textarea 
+                          id="feedback" 
+                          placeholder="Please share your experience with this journey..."
+                          value={feedbackText}
+                          onChange={(e) => setFeedbackText(e.target.value)}
+                          className="mt-1 h-32"
+                        />
+                      </div>
+                      <DialogFooter>
+                        <DialogClose asChild>
+                          <Button variant="outline">Cancel</Button>
+                        </DialogClose>
+                        <Button onClick={handleFeedbackSubmit}>Submit Feedback</Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
                   
                   {booking.status !== "Cancelled" && (
                     <AlertDialog>
