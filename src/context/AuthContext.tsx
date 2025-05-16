@@ -1,6 +1,7 @@
 
-import React, { createContext, useContext, useState, ReactNode } from "react";
-import { toast } from "@/components/ui/use-toast";
+import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
+import { toast } from "@/hooks/use-toast";
+import { authAPI } from "@/services/apiService";
 
 type User = {
   id: string;
@@ -14,89 +15,91 @@ type AuthContextType = {
   login: (email: string, password: string) => Promise<boolean>;
   signup: (name: string, email: string, password: string) => Promise<boolean>;
   logout: () => void;
+  isLoading: boolean;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock user data for demonstration
-const MOCK_USERS = [
-  {
-    id: "1",
-    email: "user@example.com",
-    password: "password123",
-    name: "Demo User",
-  },
-];
-
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(() => {
-    const savedUser = localStorage.getItem("user");
-    return savedUser ? JSON.parse(savedUser) : null;
-  });
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Check if user is already logged in on component mount
+  useEffect(() => {
+    const checkLoggedIn = async () => {
+      const token = localStorage.getItem("token");
+      if (token) {
+        try {
+          const userData = await authAPI.getCurrentUser();
+          setUser(userData);
+        } catch (error) {
+          console.error("Failed to retrieve user:", error);
+          localStorage.removeItem("token");
+        }
+      }
+      setIsLoading(false);
+    };
+
+    checkLoggedIn();
+  }, []);
 
   const isAuthenticated = !!user;
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    const foundUser = MOCK_USERS.find(
-      u => u.email === email && u.password === password
-    );
-    
-    if (foundUser) {
-      const { password, ...userWithoutPassword } = foundUser;
-      setUser(userWithoutPassword);
-      localStorage.setItem("user", JSON.stringify(userWithoutPassword));
+    setIsLoading(true);
+    try {
+      const response = await authAPI.login({ email, password });
+      localStorage.setItem("token", response.token);
+      setUser(response.user);
       toast({
         title: "Login successful",
-        description: `Welcome back, ${foundUser.name}!`,
+        description: `Welcome back, ${response.user.name}!`,
       });
+      setIsLoading(false);
       return true;
-    } else {
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || "Login failed";
       toast({
         title: "Login failed",
-        description: "Invalid email or password",
+        description: errorMessage,
         variant: "destructive",
       });
+      setIsLoading(false);
       return false;
     }
   };
 
   const signup = async (name: string, email: string, password: string): Promise<boolean> => {
-    // Simulate API call delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    const userExists = MOCK_USERS.some(u => u.email === email);
-    
-    if (userExists) {
-      toast({
-        title: "Signup failed",
-        description: "Email already exists",
-        variant: "destructive",
-      });
-      return false;
-    } else {
-      // In a real app, this would be an API call to create a user
-      const newUser = {
-        id: Math.random().toString(36).substr(2, 9),
-        email,
-        name,
-      };
+    setIsLoading(true);
+    try {
+      const response = await authAPI.register({ name, email, password });
+      localStorage.setItem("token", response.token);
       
-      setUser(newUser);
-      localStorage.setItem("user", JSON.stringify(newUser));
+      // Get user data after registration
+      const userData = await authAPI.getCurrentUser();
+      setUser(userData);
+      
       toast({
         title: "Signup successful",
         description: "Your account has been created",
       });
+      setIsLoading(false);
       return true;
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.message || "Signup failed";
+      toast({
+        title: "Signup failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      setIsLoading(false);
+      return false;
     }
   };
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem("user");
+    localStorage.removeItem("token");
     toast({
       title: "Logged out",
       description: "You have been logged out successfully",
@@ -105,7 +108,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   return (
     <AuthContext.Provider
-      value={{ user, isAuthenticated, login, signup, logout }}
+      value={{ user, isAuthenticated, login, signup, logout, isLoading }}
     >
       {children}
     </AuthContext.Provider>

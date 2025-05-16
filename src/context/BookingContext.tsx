@@ -1,6 +1,7 @@
-
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { toast } from "@/hooks/use-toast";
+import { bookingsAPI } from "@/services/apiService";
+import { useAuth } from "./AuthContext";
 
 type Seat = {
   id: string;
@@ -137,19 +138,28 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [booking, setBooking] = useState<BookingState>(initialState);
   const [step, setStep] = useState(1);
   const [savedBookings, setSavedBookings] = useState<Booking[]>([]);
-
-  // Get saved bookings from localStorage on initial load
-  React.useEffect(() => {
-    const storedBookings = localStorage.getItem('travelGlideBookings');
-    if (storedBookings) {
-      try {
-        const parsedBookings = JSON.parse(storedBookings);
-        setSavedBookings(parsedBookings);
-      } catch (error) {
-        console.error("Error parsing saved bookings:", error);
+  const { user, isAuthenticated } = useAuth();
+  
+  // Fetch bookings from API when user is authenticated
+  useEffect(() => {
+    const fetchBookings = async () => {
+      if (isAuthenticated && user) {
+        try {
+          const bookingsData = await bookingsAPI.getBookings();
+          setSavedBookings(bookingsData);
+        } catch (error) {
+          console.error("Failed to fetch bookings:", error);
+          toast({
+            title: "Error",
+            description: "Failed to fetch your bookings",
+            variant: "destructive"
+          });
+        }
       }
-    }
-  }, []);
+    };
+    
+    fetchBookings();
+  }, [isAuthenticated, user]);
 
   const setSearchParams = (from: string, to: string, date: Date) => {
     setBooking(prev => ({
@@ -206,7 +216,7 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children })
     return `BK-${Math.floor(100000 + Math.random() * 900000)}`;
   };
 
-  const completeBooking = () => {
+  const completeBooking = async () => {
     const newBookingId = generateBookingId();
     
     setBooking(prev => ({
@@ -214,7 +224,7 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children })
       bookingId: newBookingId
     }));
     
-    // Save the completed booking to our list of bookings
+    // Create the new booking object
     const newBooking: Booking = {
       ...booking,
       id: newBookingId,
@@ -223,29 +233,54 @@ export const BookingProvider: React.FC<{ children: ReactNode }> = ({ children })
       bookingDate: new Date()
     };
     
-    const updatedBookings = [...savedBookings, newBooking];
-    setSavedBookings(updatedBookings);
-    
-    // Save to localStorage for persistence
-    localStorage.setItem('travelGlideBookings', JSON.stringify(updatedBookings));
-  };
-  
-  const cancelBooking = (bookingId: string) => {
-    const bookingIndex = savedBookings.findIndex(b => b.id === bookingId);
-    
-    if (bookingIndex !== -1) {
-      const updatedBookings = [...savedBookings];
-      updatedBookings[bookingIndex] = {
-        ...updatedBookings[bookingIndex],
-        status: "Cancelled"
-      };
+    try {
+      // Save booking to MongoDB through API
+      await bookingsAPI.createBooking(newBooking);
       
-      setSavedBookings(updatedBookings);
-      localStorage.setItem('travelGlideBookings', JSON.stringify(updatedBookings));
+      // Update local state
+      setSavedBookings(prev => [...prev, newBooking]);
       
       toast({
-        title: "Booking Cancelled",
-        description: `Your booking ${bookingId} has been cancelled. A refund of $${savedBookings[bookingIndex].totalPrice.toFixed(2)} will be processed within 5-7 business days.`
+        title: "Booking Completed",
+        description: `Your booking with ID ${newBookingId} has been confirmed.`,
+      });
+    } catch (error) {
+      console.error("Failed to save booking:", error);
+      toast({
+        title: "Booking Error",
+        description: "There was an error completing your booking. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+  
+  const cancelBooking = async (bookingId: string) => {
+    try {
+      // Update booking status in MongoDB through API
+      await bookingsAPI.updateBookingStatus(bookingId, "Cancelled");
+      
+      // Update local state
+      const bookingIndex = savedBookings.findIndex(b => b.id === bookingId);
+      if (bookingIndex !== -1) {
+        const updatedBookings = [...savedBookings];
+        updatedBookings[bookingIndex] = {
+          ...updatedBookings[bookingIndex],
+          status: "Cancelled"
+        };
+        
+        setSavedBookings(updatedBookings);
+        
+        toast({
+          title: "Booking Cancelled",
+          description: `Your booking ${bookingId} has been cancelled. A refund will be processed within 5-7 business days.`
+        });
+      }
+    } catch (error) {
+      console.error("Failed to cancel booking:", error);
+      toast({
+        title: "Error",
+        description: "Failed to cancel booking. Please try again.",
+        variant: "destructive"
       });
     }
   };
