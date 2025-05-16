@@ -20,6 +20,15 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Add interceptor to handle errors
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    console.error('API Error:', error.response?.data || error.message);
+    return Promise.reject(error);
+  }
+);
+
 // Auth API
 export const authAPI = {
   register: async (userData: { name: string; email: string; password: string }) => {

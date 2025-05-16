@@ -7,11 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { UserPlus, LogIn } from "lucide-react";
+import { UserPlus, LogIn, Loader2 } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 const Auth = () => {
   const navigate = useNavigate();
-  const { login, signup } = useAuth();
+  const { login, signup, isLoading: authLoading } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   
   // Login form state
@@ -25,6 +26,16 @@ const Auth = () => {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!loginEmail || !loginPassword) {
+      toast({
+        title: "Missing information",
+        description: "Please enter both email and password",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
@@ -32,6 +43,8 @@ const Auth = () => {
       if (success) {
         navigate("/");
       }
+    } catch (error) {
+      console.error("Login handler error:", error);
     } finally {
       setIsLoading(false);
     }
@@ -39,6 +52,25 @@ const Auth = () => {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!signupName || !signupEmail || !signupPassword) {
+      toast({
+        title: "Missing information",
+        description: "Please fill out all fields",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    if (signupPassword.length < 6) {
+      toast({
+        title: "Password too short",
+        description: "Password must be at least 6 characters",
+        variant: "destructive"
+      });
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
@@ -46,10 +78,14 @@ const Auth = () => {
       if (success) {
         navigate("/");
       }
+    } catch (error) {
+      console.error("Signup handler error:", error);
     } finally {
       setIsLoading(false);
     }
   };
+
+  const isFormLoading = isLoading || authLoading;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
@@ -79,6 +115,7 @@ const Auth = () => {
                       value={loginEmail}
                       onChange={(e) => setLoginEmail(e.target.value)}
                       required
+                      disabled={isFormLoading}
                     />
                   </div>
                   <div className="space-y-2">
@@ -90,11 +127,15 @@ const Auth = () => {
                       value={loginPassword}
                       onChange={(e) => setLoginPassword(e.target.value)}
                       required
+                      disabled={isFormLoading}
                     />
                   </div>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? (
-                      "Logging in..."
+                  <Button type="submit" className="w-full" disabled={isFormLoading}>
+                    {isFormLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Logging in...
+                      </>
                     ) : (
                       <>
                         <LogIn className="mr-2 h-4 w-4" />
@@ -129,6 +170,7 @@ const Auth = () => {
                       value={signupName}
                       onChange={(e) => setSignupName(e.target.value)}
                       required
+                      disabled={isFormLoading}
                     />
                   </div>
                   <div className="space-y-2">
@@ -140,6 +182,7 @@ const Auth = () => {
                       value={signupEmail}
                       onChange={(e) => setSignupEmail(e.target.value)}
                       required
+                      disabled={isFormLoading}
                     />
                   </div>
                   <div className="space-y-2">
@@ -151,11 +194,16 @@ const Auth = () => {
                       value={signupPassword}
                       onChange={(e) => setSignupPassword(e.target.value)}
                       required
+                      disabled={isFormLoading}
+                      minLength={6}
                     />
                   </div>
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? (
-                      "Creating account..."
+                  <Button type="submit" className="w-full" disabled={isFormLoading}>
+                    {isFormLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating account...
+                      </>
                     ) : (
                       <>
                         <UserPlus className="mr-2 h-4 w-4" />
